@@ -1,0 +1,30 @@
+{
+    "name": "cuongcds/ci3-analytics",
+    "description": "Reusable first-party analytics (page views, clicks, search) Composer package for CodeIgniter 3.1.13 projects",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "cuongcds"
+        }
+    ],
+    "homepage": "https://github.com/cuongcds/ci3-analytics",
+    "support": {
+        "issues": "https://github.com/cuongcds/ci3-analytics/issues",
+        "source": "https://github.com/cuongcds/ci3-analytics"
+    },
+    "keywords": [
+        "codeigniter3",
+        "analytics",
+        "tracking"
+    ],
+    "require": {
+        "php": ">=7.2 <8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Open\\Analytics\\": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}
