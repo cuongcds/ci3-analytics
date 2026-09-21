@@ -34,6 +34,11 @@ class EventRepositoryCi3 implements EventRepositoryInterface
         return $this->model->getDailySeries($eventType, $from, $to);
     }
 
+    public function getDailyActiveVisitors(int $from, int $to): array
+    {
+        return $this->model->getDailyActiveVisitors($from, $to);
+    }
+
     public function getEventTypeBreakdown(int $from, int $to): array
     {
         return $this->model->getEventTypeBreakdown($from, $to);
@@ -42,5 +47,15 @@ class EventRepositoryCi3 implements EventRepositoryInterface
     public function getTopSubjects(int $from, int $to, int $limit = 20): array
     {
         return $this->model->getTopSubjects($from, $to, $limit);
+    }
+
+    public function getTopPaths(int $from, int $to, int $limit = 20): array
+    {
+        return $this->model->getTopPaths($from, $to, $limit);
+    }
+
+    public function getTopDomains(int $from, int $to, int $limit = 20): array
+    {
+        return $this->model->getTopDomains($from, $to, $limit);
     }
 }

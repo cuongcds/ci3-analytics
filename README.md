@@ -143,6 +143,22 @@ $this->analytics_lib->setSubjectResolver(new Tool_subject_resolver());
 join `subject_id` back to your own table for names/links (see the "Top subjects" block in
 `adapters/codeigniter3/views/admin/pages/analytics/index.php` for the join pattern).
 
+## Report data
+
+`Analytics_lib::buildReport(array $rangeParams, int $topSubjectsLimit = 20): array`
+resolves the date range (presets or custom `start`/`end`, both clamped —
+see `Open\Analytics\Support\DateRange`) and returns:
+
+| Key | Shape | Notes |
+| --- | --- | --- |
+| `start_date`, `end_date` | `'Y-m-d'` | The resolved, clamped range |
+| `unique_visitors` | `int` | Distinct visitors seen in the range |
+| `page_views`, `clicks` | `int` | Total counts for the range |
+| `daily_page_views` | `[['day' => 'Y-m-d', 'total' => int], ...]` | One entry per day in the range, gaps filled with `0` (see `Open\Analytics\Support\DailySeries`) |
+| `daily_active_visitors` | same shape | DAU — distinct visitors per day, also zero-filled |
+| `event_breakdown` | `[['event_type' => string, 'total' => int], ...]` | Per-event-type totals, descending |
+| `top_subjects` | `[['subject_id' => int, 'page_views' => int, 'clicks' => int], ...]` | Empty unless a `SubjectResolverInterface` is configured |
+
 ## Embedding into your own dashboard
 
 Rather than linking to the package's standalone `/admin/analytics` page, most
@@ -166,6 +182,26 @@ $this->load->view('your/dashboard', [
 $this->load->view('admin/pages/analytics/_summary_cards', ['report' => $report]);
 $this->load->view('admin/pages/analytics/_overview', compact('report', 'formAction', 'dateRange'));
 ```
+
+`_overview.php` renders the DAU chart alongside Page views automatically
+(`$report['daily_active_visitors']` is always present from `buildReport()`)
+— it just needs [`open-analytics`](https://github.com/cuongcds/open-analytics)'s
+chart renderer loaded on the page, after Chart.js itself:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.x/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@cuongcds/open-analytics@0.1.0/dist/open-analytics-chart.min.js"></script>
+```
+
+If your host app injects extra `<script>` tags into its layout via a base
+controller property (e.g. a `$this->customJs[] = '...'` pattern, common in
+CI3 apps with a shared `MY_Controller`), add both URLs there instead of a
+same-named local variable — a base controller's own `view()`/`render()`
+method commonly overwrites a local `$customJs` with its own (usually
+empty) property of the same name right before rendering, silently
+dropping the scripts you meant to add. Confirm the two `<script>` tags
+actually appear in the rendered HTML if the charts render blank; that
+silent-overwrite is a much more common cause than a data problem.
 
 The bundled `_summary_cards`/`_overview`/`stat_card` views use minimal inline
 styles so the package works standalone. If your app already has a themed

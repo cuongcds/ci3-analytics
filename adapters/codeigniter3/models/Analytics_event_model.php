@@ -43,6 +43,17 @@ class Analytics_event_model extends CI_Model
         return $this->db->get($this->table)->result_array();
     }
 
+    public function getDailyActiveVisitors($from, $to)
+    {
+        $this->db->select("FROM_UNIXTIME(created_at, '%Y-%m-%d') as day, COUNT(DISTINCT visitor_uid) as total", false);
+        $this->db->where('event_type', 'page_view');
+        $this->db->where('created_at >=', $from);
+        $this->db->where('created_at <=', $to);
+        $this->db->group_by('day');
+        $this->db->order_by('day', 'asc');
+        return $this->db->get($this->table)->result_array();
+    }
+
     public function getEventTypeBreakdown($from, $to)
     {
         $this->db->select('event_type, COUNT(*) as total');
@@ -66,5 +77,32 @@ class Analytics_event_model extends CI_Model
         $this->db->order_by('page_views', 'desc');
         $this->db->limit($limit);
         return $this->db->get()->result_array();
+    }
+
+    public function getTopPaths($from, $to, $limit = 20)
+    {
+        $this->db->select('path, domain, COUNT(*) as page_views');
+        $this->db->where('event_type', 'page_view');
+        $this->db->where('path is not null');
+        $this->db->where('created_at >=', $from);
+        $this->db->where('created_at <=', $to);
+        $this->db->group_by(['path', 'domain']);
+        $this->db->order_by('page_views', 'desc');
+        $this->db->limit($limit);
+        return $this->db->get($this->table)->result_array();
+    }
+
+    public function getTopDomains($from, $to, $limit = 20)
+    {
+        $this->db->select('domain,
+            SUM(CASE WHEN event_type = "page_view" THEN 1 ELSE 0 END) as page_views,
+            COUNT(DISTINCT visitor_uid) as unique_visitors', false);
+        $this->db->where('domain is not null');
+        $this->db->where('created_at >=', $from);
+        $this->db->where('created_at <=', $to);
+        $this->db->group_by('domain');
+        $this->db->order_by('page_views', 'desc');
+        $this->db->limit($limit);
+        return $this->db->get($this->table)->result_array();
     }
 }

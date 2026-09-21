@@ -27,17 +27,28 @@ $config['analytics'] = [
         'lifetime_days' => 365,
     ],
 
-    /*
-     * Origins allowed to POST to the track endpoint from a different
-     * domain (e.g. https://my-site.com), so the visitor cookie is sent
-     * and readable across a shared/centralized analytics deployment.
-     * Same-origin requests always work regardless of this setting; leave
-     * empty ([]) if every site tracks its own events same-origin.
-     * Wildcards are not supported on purpose — Access-Control-Allow-Origin
-     * can't be "*" together with Access-Control-Allow-Credentials: true,
-     * so each allowed origin must be listed explicitly.
-     */
     'cors' => [
+        /*
+         * 'allowlist' (default): only origins listed in allowed_origins may
+         * POST cross-origin, with Allow-Credentials so the visitor cookie
+         * is sent/stored across a known, fixed set of domains you control.
+         *
+         * 'open': any origin may POST (Access-Control-Allow-Origin: *), but
+         * without credentials — the browser then never sends/stores the
+         * visitor cookie cross-origin. Use this when the tracking script is
+         * embedded on domains you don't know in advance (a public/embeddable
+         * snippet, e.g. published tools reachable on arbitrary third-party
+         * domains) — each visit still gets a fresh, uncorrelated visitor_uid
+         * server-side (see VisitorId::generate() in trackFromRequest()),
+         * the same trade-off most third-party analytics scripts make.
+         * Same-origin requests always work regardless of this setting.
+         */
+        'mode' => 'allowlist',
+
+        // Only used when mode is 'allowlist'. Wildcards are not supported on
+        // purpose — Access-Control-Allow-Origin can't be "*" together with
+        // Access-Control-Allow-Credentials: true, so each allowed origin
+        // must be listed explicitly.
         'allowed_origins' => [
             // 'https://my-site.com',
         ],

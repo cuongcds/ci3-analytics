@@ -1,8 +1,10 @@
 <?php
 /**
- * Filter form (presets + custom range) and the daily page-views chart.
- * Meant to be embedded into the host app's own dashboard/analytics page —
- * see README "Embedding into your own dashboard".
+ * Filter form (presets + custom range) plus the daily page-views chart,
+ * paired with a DAU chart when $report['daily_active_visitors'] is
+ * present (always is, via AnalyticsService::buildReport()). Meant to be
+ * embedded into the host app's own dashboard/analytics page — see README
+ * "Embedding into your own dashboard".
  * Expects: $report, $formAction, and a Open\Analytics\Support\DateRange
  * instance as $dateRange (for the preset start dates / min/max bounds).
  */
@@ -31,13 +33,30 @@ $presetStarts = $dateRange->presetStarts();
 	</form>
 </div>
 
-<div style="border-radius:8px;border:1px solid #e5e7eb;padding:20px;">
-	<p style="margin:0 0 12px;font-size:.875rem;font-weight:600;color:#6b7280;text-transform:uppercase;">Page views over time</p>
-	<canvas id="analyticsDailyChart" height="80"></canvas>
+<?php $hasDau = !empty($report['daily_active_visitors']); ?>
+<div style="display:grid;grid-template-columns:<?= $hasDau ? 'repeat(2,1fr)' : '1fr' ?>;gap:16px;">
+	<div style="border-radius:8px;border:1px solid #e5e7eb;padding:20px;">
+		<p style="margin:0 0 12px;font-size:.875rem;font-weight:600;color:#6b7280;text-transform:uppercase;">Page views over time</p>
+		<canvas id="analyticsDailyChart" height="80"></canvas>
+	</div>
+	<?php if ($hasDau): ?>
+	<div style="border-radius:8px;border:1px solid #e5e7eb;padding:20px;">
+		<p style="margin:0 0 12px;font-size:.875rem;font-weight:600;color:#6b7280;text-transform:uppercase;">Daily active users (DAU)</p>
+		<canvas id="analyticsDauChart" height="80"></canvas>
+	</div>
+	<?php endif; ?>
 </div>
 
-<script>
-	window.OPEN_ANALYTICS_DAILY_SERIES = <?= json_encode(array_map(function ($row) {
+<?php
+$analyticsSeriesToJson = function (array $rows) {
+	return json_encode(array_map(function ($row) {
 		return ['day' => $row['day'], 'total' => (int) $row['total']];
-	}, $report['daily_page_views'])) ?>;
+	}, $rows));
+};
+?>
+<script>
+	window.OPEN_ANALYTICS_DAILY_SERIES = <?= $analyticsSeriesToJson($report['daily_page_views']) ?>;
+	<?php if ($hasDau): ?>
+	window.OPEN_ANALYTICS_DAU_SERIES = <?= $analyticsSeriesToJson($report['daily_active_visitors']) ?>;
+	<?php endif; ?>
 </script>

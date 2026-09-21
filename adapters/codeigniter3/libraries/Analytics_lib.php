@@ -92,8 +92,12 @@ class Analytics_lib
 
     /**
      * Records one incoming track request. $request is the raw associative
-     * array of POSTed fields (event_type, path, referrer, label) plus the
-     * User-Agent string and any existing visitor cookie value.
+     * array of POSTed fields (event_type, path, domain, referrer, label)
+     * plus the User-Agent string and any existing visitor cookie value.
+     * `domain` is the page's own window.location.hostname as reported by
+     * the client (see assets/js/open-analytics.js) — the request's own
+     * Host header can't be used for this, since the tracking script always
+     * loads from this service regardless of which domain embeds it.
      *
      * Returns the resolved visitor_uid so the caller (the Track controller)
      * can set/refresh the cookie.
@@ -108,6 +112,7 @@ class Analytics_lib
             'event_type' => $request['event_type'] ?? null,
             'visitor_uid' => $visitorUid,
             'path' => $request['path'] ?? '',
+            'domain' => $request['domain'] ?? null,
             'referrer' => $request['referrer'] ?? '',
             'label' => $request['label'] ?? '',
             'device' => $device,

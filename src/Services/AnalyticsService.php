@@ -5,7 +5,9 @@ namespace Open\Analytics\Services;
 use Open\Analytics\Contracts\EventRepositoryInterface;
 use Open\Analytics\Contracts\SubjectResolverInterface;
 use Open\Analytics\Contracts\VisitorRepositoryInterface;
+use Open\Analytics\Support\DailySeries;
 use Open\Analytics\Support\DateRange;
+use Open\Analytics\Support\Domain;
 
 /**
  * Framework-free core: recording events and building the report data a
@@ -47,8 +49,9 @@ class AnalyticsService
 
     /**
      * Records one tracked event. $input carries: event_type (required,
-     * must be one of ALLOWED_EVENT_TYPES), visitor_uid, path, referrer,
-     * label, device, browser, fingerprint.
+     * must be one of ALLOWED_EVENT_TYPES), visitor_uid, path, domain (the
+     * page's own window.location.hostname, as reported by the client — see
+     * Support\Domain), referrer, label, device, browser, fingerprint.
      *
      * @throws \InvalidArgumentException if event_type is missing/invalid.
      */
@@ -75,6 +78,7 @@ class AnalyticsService
             'event_type' => $eventType,
             'subject_id' => $subjectId,
             'path' => mb_substr($path, 0, 512),
+            'domain' => Domain::normalize($input['domain'] ?? null),
             'referrer' => mb_substr((string) ($input['referrer'] ?? ''), 0, 512),
             'label' => mb_substr((string) ($input['label'] ?? ''), 0, 255),
             'device' => $input['device'] ?? null,
@@ -84,9 +88,14 @@ class AnalyticsService
 
     /**
      * Everything a dashboard/report page needs for one resolved date
-     * range: summary counts, the daily page-view series, the event-type
-     * breakdown, and top-subjects (if a SubjectResolverInterface was
-     * provided).
+     * range: summary counts, the daily page-view series, DAU (daily
+     * distinct visitors), the event-type breakdown, and top-subjects (if a
+     * SubjectResolverInterface was provided).
+     *
+     * event_breakdown is per-event-type totals for the range — e.g.
+     * [['event_type' => 'page_view', 'total' => 120], ['event_type' =>
+     * 'click', 'total' => 34], ...], ordered by total descending. Useful
+     * for a simple list/pie breakdown of what kind of activity dominates.
      */
     public function buildReport(array $rangeParams, int $topSubjectsLimit = 20): array
     {
@@ -100,9 +109,12 @@ class AnalyticsService
             'unique_visitors' => $this->visitors->countUnique($from, $to),
             'page_views' => $this->events->countByType('page_view', $from, $to),
             'clicks' => $this->events->countByType('click', $from, $to),
-            'daily_page_views' => $this->events->getDailySeries('page_view', $from, $to),
+            'daily_page_views' => DailySeries::fill($this->events->getDailySeries('page_view', $from, $to), $startDate, $endDate),
+            'daily_active_visitors' => DailySeries::fill($this->events->getDailyActiveVisitors($from, $to), $startDate, $endDate),
             'event_breakdown' => $this->events->getEventTypeBreakdown($from, $to),
             'top_subjects' => $this->subjectResolver ? $this->events->getTopSubjects($from, $to, $topSubjectsLimit) : [],
+            'top_paths' => $this->events->getTopPaths($from, $to, $topSubjectsLimit),
+            'top_domains' => $this->events->getTopDomains($from, $to, $topSubjectsLimit),
         ];
     }
 }

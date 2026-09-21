@@ -49,6 +49,7 @@ class Analytics_track extends CI_Controller
             [
                 'event_type' => $eventType,
                 'path' => $this->input->post('path'),
+                'domain' => $this->resolveDomain(),
                 'referrer' => $this->input->post('referrer'),
                 'label' => $this->input->post('label'),
             ],
@@ -70,16 +71,45 @@ class Analytics_track extends CI_Controller
     }
 
     /**
-     * Echoes back the requesting Origin (never "*") when it's in the
-     * configured allow-list, with Allow-Credentials so the visitor cookie
-     * actually gets sent/stored cross-origin. No-op for a same-origin
-     * request (no Origin header, or one matching this host) — nothing to
-     * grant there.
+     * The Origin header is set by the browser itself on every cross-origin
+     * request and can't be forged by page JS — a more trustworthy domain
+     * source than the posted `domain` field, but it has no path and some
+     * browsers omit it on a same-origin request. Prefer it when present,
+     * falling back to the client-reported field otherwise. See
+     * Open\Analytics\Support\Domain.
+     */
+    protected function resolveDomain()
+    {
+        $fromOrigin = \Open\Analytics\Support\Domain::fromOriginHeader($this->input->server('HTTP_ORIGIN'));
+        return $fromOrigin ?? $this->input->post('domain');
+    }
+
+    /**
+     * 'open' mode (see adapters/codeigniter3/config/analytics.php): accepts
+     * a POST from any origin, without credentials — for a tracking script
+     * embedded on domains not known in advance (see Support\Domain). No
+     * visitor cookie is sent/stored cross-origin in this mode; each
+     * cross-origin visit gets a fresh visitor_uid.
+     *
+     * 'allowlist' mode (default): echoes back the requesting Origin (never
+     * "*") only when it's in the configured allow-list, with
+     * Allow-Credentials so the visitor cookie actually gets sent/stored
+     * cross-origin for that known, fixed set of domains.
+     *
+     * Either way, a same-origin request (no Origin header, or one matching
+     * this host) needs no CORS headers — nothing to grant there.
      */
     protected function applyCorsHeaders()
     {
         $origin = $this->input->server('HTTP_ORIGIN');
         if (empty($origin)) {
+            return;
+        }
+
+        if ($this->analytics_lib->config('cors.mode', 'allowlist') === 'open') {
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: POST, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type');
             return;
         }
 
