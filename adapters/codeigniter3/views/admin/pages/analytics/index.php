@@ -62,7 +62,6 @@
 			<thead>
 				<tr style="text-align:left;color:#6b7280;border-bottom:1px solid #e5e7eb;">
 					<th style="padding:6px 8px 6px 0;">Page</th>
-					<th style="padding:6px 8px;">Domain</th>
 					<th style="padding:6px 0 6px 8px;text-align:right;">Page views</th>
 				</tr>
 			</thead>
@@ -71,12 +70,13 @@
 				<tr style="border-bottom:1px solid #f3f4f6;">
 					<td style="padding:6px 8px 6px 0;word-break:break-all;">
 						<?php if (!empty($row['domain'])): ?>
-						<a href="<?= 'https://' . htmlspecialchars($row['domain']) . htmlspecialchars($row['path']) ?>" target="_blank" rel="noopener" style="color:inherit;"><?= htmlspecialchars($row['path']) ?></a>
+						<a href="<?= 'https://' . htmlspecialchars($row['domain']) . htmlspecialchars($row['path']) ?>" target="_blank" rel="noopener" style="color:inherit;">
+							<span style="color:#6b7280;"><?= htmlspecialchars($row['domain']) ?></span><?= htmlspecialchars($row['path']) ?>
+						</a>
 						<?php else: ?>
 						<?= htmlspecialchars($row['path']) ?>
 						<?php endif; ?>
 					</td>
-					<td style="padding:6px 8px;color:#6b7280;"><?= htmlspecialchars($row['domain'] ?? '—') ?></td>
 					<td style="padding:6px 0 6px 8px;text-align:right;"><?= (int) $row['page_views'] ?></td>
 				</tr>
 				<?php endforeach; ?>

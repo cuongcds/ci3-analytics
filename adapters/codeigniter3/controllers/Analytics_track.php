@@ -29,12 +29,21 @@ class Analytics_track extends CI_Controller
         // endpoint — but respond correctly regardless, for any client
         // that does send an OPTIONS request.
         if ($method === 'OPTIONS') {
-            $this->output->set_status_header(204)->_display();
+            $this->output->set_status_header($this->isRejectedOrigin() ? 403 : 204)->_display();
             exit;
         }
 
         if ($method !== 'POST') {
             $this->fail('Invalid request', 400);
+        }
+
+        // CORS headers alone don't stop a cross-origin POST from reaching
+        // the server — they only stop the browser from letting page JS read
+        // the response (and sendBeacon() ignores CORS entirely). In
+        // 'allowlist' mode, an origin outside allowed_origins must be
+        // rejected here explicitly, not just left without Allow-Credentials.
+        if ($this->isRejectedOrigin()) {
+            $this->fail('Origin not allowed', 403);
         }
 
         $eventType = $this->input->post('event_type');
@@ -89,12 +98,16 @@ class Analytics_track extends CI_Controller
      * a POST from any origin, without credentials — for a tracking script
      * embedded on domains not known in advance (see Support\Domain). No
      * visitor cookie is sent/stored cross-origin in this mode; each
-     * cross-origin visit gets a fresh visitor_uid.
+     * cross-origin visit gets a fresh visitor_uid. track() never rejects
+     * for origin in this mode.
      *
      * 'allowlist' mode (default): echoes back the requesting Origin (never
      * "*") only when it's in the configured allow-list, with
      * Allow-Credentials so the visitor cookie actually gets sent/stored
-     * cross-origin for that known, fixed set of domains.
+     * cross-origin for that known, fixed set of domains. An origin outside
+     * the list gets no CORS grant at all — and track() also rejects it
+     * outright (see isRejectedOrigin()), since missing headers alone don't
+     * stop sendBeacon() or the request from reaching the server.
      *
      * Either way, a same-origin request (no Origin header, or one matching
      * this host) needs no CORS headers — nothing to grant there.
@@ -113,8 +126,7 @@ class Analytics_track extends CI_Controller
             return;
         }
 
-        $allowedOrigins = $this->analytics_lib->config('cors.allowed_origins', []);
-        if (!in_array($origin, $allowedOrigins, true)) {
+        if ($this->isRejectedOrigin()) {
             return;
         }
 
@@ -123,6 +135,26 @@ class Analytics_track extends CI_Controller
         header('Access-Control-Allow-Methods: POST, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type');
         header('Vary: Origin');
+    }
+
+    /**
+     * True only in 'allowlist' mode, for a cross-origin request whose
+     * Origin isn't in cors.allowed_origins. 'open' mode and same-origin
+     * requests are never rejected for origin.
+     */
+    protected function isRejectedOrigin()
+    {
+        $origin = $this->input->server('HTTP_ORIGIN');
+        if (empty($origin)) {
+            return false;
+        }
+
+        if ($this->analytics_lib->config('cors.mode', 'allowlist') === 'open') {
+            return false;
+        }
+
+        $allowedOrigins = $this->analytics_lib->config('cors.allowed_origins', []);
+        return !in_array($origin, $allowedOrigins, true);
     }
 
     protected function fail($message, $statusCode)
