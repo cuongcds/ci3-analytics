@@ -39,6 +39,15 @@ class Analytics_lib
         // $config['analytics'] is already merged (package defaults +
         // application/config/analytics.php overrides) by bootstrap.php.
         $this->config = $CI->config->item('analytics') ?: [];
+
+        // Package models/views live under adapters/codeigniter3/, only
+        // registered with CI3's loader lazily by Analytics_Controller's
+        // constructor. A host that loads this library from its own
+        // MY_Controller (e.g. to call setUserProvider() or buildReport()
+        // outside of the package's own dashboard controller) never
+        // instantiates an Analytics_Controller, so register it here too —
+        // register_package_path() is idempotent either way.
+        $CI->load->add_package_path(realpath(__DIR__ . '/../') . DIRECTORY_SEPARATOR);
     }
 
     public function config($key = null, $default = null)
