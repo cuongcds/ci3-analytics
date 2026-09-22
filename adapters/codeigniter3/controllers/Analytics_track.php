@@ -138,14 +138,25 @@ class Analytics_track extends CI_Controller
     }
 
     /**
-     * True only in 'allowlist' mode, for a cross-origin request whose
-     * Origin isn't in cors.allowed_origins. 'open' mode and same-origin
-     * requests are never rejected for origin.
+     * True only in 'allowlist' mode, for a genuinely cross-origin request
+     * whose Origin isn't in cors.allowed_origins. 'open' mode and
+     * same-origin requests are never rejected for origin.
+     *
+     * Some browsers (e.g. Chrome via sendBeacon()) send an Origin header
+     * even for a same-origin POST — that header's host must be compared
+     * against the request's own Host, not just checked for presence,
+     * otherwise every same-origin tracked page gets rejected outright.
      */
     protected function isRejectedOrigin()
     {
         $origin = $this->input->server('HTTP_ORIGIN');
         if (empty($origin)) {
+            return false;
+        }
+
+        $originHost = \Open\Analytics\Support\Domain::fromOriginHeader($origin);
+        $requestHost = \Open\Analytics\Support\Domain::normalize($this->input->server('HTTP_HOST'));
+        if ($originHost !== null && $originHost === $requestHost) {
             return false;
         }
 
